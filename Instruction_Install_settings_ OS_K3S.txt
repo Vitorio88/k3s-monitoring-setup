@@ -1,0 +1,226 @@
+--------------------------------------------
+Глава 1. Початок інструкції для встановлення 
+1 master
+2 workers
+--------------------------------------------
+Глава 2. Початок інструкції для встановлення 
+3 master
+3 workers
+https - підключення до Grafana, Prometheus
+-------------------------------------------------
+Встановлення додаткового програмного забезпечення
+-------------------------------------------------
+sudo apt update && sudo apt install -y curl vim net-tools && sudo apt install mc && sudo apt install telnet && sudo apt install netcat-openbsd -y
+
+Написати значення для файлу hosts - OS Ubuntu, Local laptop
+File_hosts_OS_Ubuntu .txt
+File_hosts_Local PC.txt
+
+------------------------
+Налаштування SSH доступу
+------------------------
+systemctl status sshd
+
+sudo ufw allow 22/tcp
+
+sudo vi /etc/ssh/sshd_config
+файл налаштування знімаємо - #
+
+Port 22
+PermitRootLogin prohibit-password
+PasswordAuthentication yes
+
+-------------------
+Налаштування мережі
+-------------------
+Вимкнути cloud-init (рекомендовано)
+sudo apt remove cloud-init
+
+/etc/netplan/00-installer-config.yaml
+Отсупи ф файлі робити тільки пробілом
+ network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s8:
+      dhcp4: no
+      addresses:
+        - 172.17.1.230-235/24
+      gateway4: 172.17.1.1
+      nameservers:
+        addresses:
+          - 8.8.8.8 
+
+Щоб записались налаштування, ВИКОНУЄМО
+sudo netplan apply
+Виключити віртуальну машину і перевірити ір 
+-----------
+Install K3S
+-----------
+Встановлення K3s на MASTER
+Виконуємо скрипт
+scripts/install-k3s-master.sh
+
+Після запуску збережіть K3S_TOKEN і MASTER_IP
+Save:
+Приклад
+K3S_TOKEN=K1037cdf9c202cdb8de7a21a6f5f0c498a660e1d2ae80cdb9dfcf637cca7a981b99::server:6c1df8ce941d43d0dfeaa5cc792d8862
+MASTER_IP=172.17.1.230
+
+Встановлення K3s на worker-ноди
+Перед запуском переконайся, що порт 6443 відкритий між worker та master.
+Можна перевірити з worker:
+nc -zv 172.17.1.230 6443
+
+На кожному з workers створюємо і запускаємо  як описано нище
+Запускаємо скрипт
+scripts/install-k3s-worker.sh
+
+Запускаємо на кожному з workers
+./install-k3s-worker.sh 172.17.1.230 K1037cdf9c202cdb8de7a21a6f5f0c498a660e1d2ae80cdb9dfcf637cca7a981b99::server:6c1df8ce941d43d0dfeaa5cc792d8862
+
+Виконуємо перевірку утворення K3S
+sudo kubectl get nodes
+Результат, файл Created_K3S-kubectl_get_nodes.jpg
+
+-----------------
+Встановлення Helm
+-----------------
+На master:
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+------------------------------
+Установка Prometheus + Grafana
+------------------------------
+На master:
+Виконуємо скрипт
+scripts/setup-monitoring.sh
+
+Перевіряємо систему моніторингу
+kubectl get svc -n monitoring
+Результат, файл Results_worked_Grafana_Prometheus_for_K3S.jpg
+
+Перевіряємо, що pods почали запускатися:
+kubectl get pods -n monitoring -o wide
+
+Перший вхід в Grafana
+
+http://172.17.1.231:30000 
+IP адрес будь якої ноди
+ір нод (workers)
+172.17.1.231
+172.17.1.232
+Результат, файл Conected_to_Grafana.jpg
+
+Логін: admin
+Для отримання паролю потрібно виконати таку команду
+kubectl get secret -n monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+Результат, файл Got_password_for_Grafana.jpg
+
+Отримавши пароль, знаючи логін, вхід в Grafana
+Результат, файл Logined_to_Grafana.jpg
+
+
+Додавання нових мастерів до кластеру
+Га головному k3sadmin – мастері, запускаємо команду для підключення нових master2, master3
+
+Запустити 2 рази
+Перший раз напише помилку, другий раз все буде гуд
+curl -sfL https://get.k3s.io | sh -s - server --cluster-init 
+
+--------------------------------------------
+Глава 2. Початок інструкції для встановлення 
+3 master
+3 workers
+https - підключення до Grafana, Prometheus
+--------------------------------------------
+Так як в нас вже є готовий кластер, який
+складається з 1 master, 2 worker,
+збільшуємо/вдосконалюємо наші можливості до
+3 master
+3 workers, а також
+https - підключення до Grafana, Prometheus
+----------------------
+Виконуємо наступні дії
+----------------------
+Га головному k3sadmin – мастері, запускаємо команду для підключення нових master2, master3
+
+Запустити 2 рази
+Перший раз напише помилку, другий раз все буде гуд
+curl -sfL https://get.k3s.io | sh -s - server --cluster-init 
+
+Копіюємо строку в термінал наших master2, master3 - Enter
+sudo curl -sfL https://get.k3s.io | \
+K3S_URL=https://172.17.1.230:6443 \
+K3S_TOKEN=K1037cdf9c202cdb8de7a21a6f5f0c498a660e1d2ae80cdb9dfcf637cca7a981b99::server:6c1df8ce941d43d0dfeaa5cc792d8862 \
+sh -s - server
+Для додавання worker1-3
+sudo curl -sfL https://get.k3s.io | \
+K3S_URL=https://172.17.1.230:6443 \
+K3S_TOKEN=K1037cdf9c202cdb8de7a21a6f5f0c498a660e1d2ae80cdb9dfcf637cca7a981b99::server:6c1df8ce941d43d0dfeaa5cc792d8862 \
+sh -s - 
+
+Перевірка роботи нашого K3S
+kubectl get nodes
+Результат, файл Results_K3S_3masters_3workers.
+
+Якщо ми поставили до цього Grafana master1 і worker1-2 треба виконати повторно ті дії які ми робили для встановлення Grafana, Prometheus
+
+Стан системних компонентів K3S
+Перевірка стану всіх подів у всіх неймспейсах
+kubectl get pods -A
+
+
+Перевірка чи автозапуск k3s як systemd-сервіс
+sudo systemctl status k3s.jpg
+
+Самопідписані TLS сертифікати для Grafana/Prometheus (генерація openssl, налаштування ingress)
+Підготовка
+Підключись до головного (master) вузла Kubernetes кластера, де є доступ до kubectl і openssl.
+Переконайся, що namespace monitoring існує (якщо ні — створимо).
+
+Створення namespace (якщо нема)
+kubectl create namespace monitoring
+Крок 2. Створення файлу конфігурації OpenSSL
+Створи файл san.cnf (наприклад, у домашній директорії):
+
+Генерація сертифіката і ключа (термін 30 років)
+openssl req -x509 -nodes -days 10950 -newkey rsa:2048 -keyout monitoring.key -out monitoring.crt -config san.cnf
+
+
+Створення Kubernetes secret з TLS-сертифікатом
+kubectl create secret tls monitoring-tls -n monitoring --cert=monitoring.crt --key=monitoring.key
+
+
+
+Створити Ingress ресурс для Grafana, Prometheus
+grafana-ingress.yaml
+prometheus-ingres.yaml
+
+Застосувати
+kubectl apply -f grafana-ingress.yaml
+kubectl apply -f prometheus-ingres.yaml
+
+Перевіряємо ресурси
+kubectl get ingress -n monitoring
+
+Відкрий у браузері
+https://grafana.monitoring.local
+https://prometheus.monitoring.local
+
+Наші результати Grpafana, Prometheus, з налаштованими Дашбордами
+CPU/memory usage by node.
+Pod status.
+Resource usage by namespace.
+Створено також окрему папку Monitoring для
+Результат, файли
+Results_Logined_to_Grafana_with_Dashboards.jpg
+Results_Dashboard_CPU_Usage_Node.jpg
+Results_Dashboard_Memory Usage by Node.jpg
+Reults_Dashboards_Pods_Running_by_Namespace.jpg
+
+
+
+
+
+

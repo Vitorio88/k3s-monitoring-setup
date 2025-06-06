@@ -120,7 +120,6 @@ kubectl get secret -n monitoring monitoring-grafana -o jsonpath="{.data.admin-pa
 Отримавши пароль, знаючи логін, вхід в Grafana
 Результат, файл Logined_to_Grafana.jpg
 
-
 Додавання нових мастерів до кластеру
 Га головному k3sadmin – мастері, запускаємо команду для підключення нових master2, master3
 
@@ -170,7 +169,6 @@ kubectl get nodes
 Перевірка стану всіх подів у всіх неймспейсах
 kubectl get pods -A
 
-
 Перевірка чи автозапуск k3s як systemd-сервіс
 sudo systemctl status k3s.jpg
 
@@ -187,11 +185,8 @@ kubectl create namespace monitoring
 Генерація сертифіката і ключа (термін 30 років)
 openssl req -x509 -nodes -days 10950 -newkey rsa:2048 -keyout monitoring.key -out monitoring.crt -config san.cnf
 
-
 Створення Kubernetes secret з TLS-сертифікатом
 kubectl create secret tls monitoring-tls -n monitoring --cert=monitoring.crt --key=monitoring.key
-
-
 
 Створити Ingress ресурс для Grafana, Prometheus
 grafana-ingress.yaml
